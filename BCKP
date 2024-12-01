@@ -1,0 +1,390 @@
+//@version=5 
+ 
+// ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ 
+// 
+//  ----------------------------------------------------------------------------- 
+//  Copyright © 2024 Skyrexio. All rights reserved. 
+//  ----------------------------------------------------------------------------- 
+// 
+//  Version: v1.0 
+//  Release:  November 4, 2024
+strategy("[CM] - December 2024 v1", overlay = true, default_qty_type=strategy.cash, default_qty_value=1000, currency=currency.USD, calc_on_every_tick = true, commission_value = 0.05)
+
+BullColor = #FFFFFF
+BearColor = #5B9CF6
+UpColor = #17dfad
+DownColor = #dd326b
+
+//+++++++++++++++++++++++++
+// OPEN DAY LINE
+//+++++++++++++++++++++++++
+var line openLine = na
+var float openLineValue = na
+newDay = ta.change(time('D'))
+if newDay != 0
+    openLine := line.new(bar_index, open, bar_index+1, open, color=color.fuchsia, width=2, style=line.style_dotted)
+    openLineValue := open
+openLine.set_x2(bar_index)
+
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © AlgoAlpha
+// indicator("Zero Lag Trend Signals (MTF) [AlgoAlpha]", shorttitle="AlgoAlpha - 0️⃣Zero Lag Signals", overlay=true)
+
+length = input.int(445, "Length", tooltip = "The Look-Back window for the Zero-Lag EMA calculations", group = "Main Calculations")
+mult = input.float(1.2, "Band Multiplier", tooltip = "This value controls the thickness of the bands, a larger value makes the indicato less noisy", group = "Main Calculations")
+t1 = input.timeframe("5", "Time frame 1", group = "Extra Timeframes")
+t2 = input.timeframe("15", "Time frame 2", group = "Extra Timeframes")
+t3 = input.timeframe("60", "Time frame 3", group = "Extra Timeframes")
+t4 = input.timeframe("240", "Time frame 4", group = "Extra Timeframes")
+t5 = input.timeframe("1D", "Time frame 5", group = "Extra Timeframes")
+green = input.color(UpColor, "Bullish Color", group = "Appearance") //#00ffbb
+red = input.color(DownColor, "Bearish Color", group = "Appearance") //#ff1100
+
+src = close
+
+lag = math.floor((length - 1) / 2)
+
+zlema = ta.ema(src + (src - src[lag]), length)
+
+volatility = ta.highest(ta.atr(length), length*3) * mult
+
+var trend = 0
+
+if ta.crossover(close, zlema+volatility)
+    trend := 1
+
+if ta.crossunder(close, zlema-volatility)
+    trend := -1
+
+zlemaColor = trend == 1 ? color.new(green, 70) : color.new(red, 70)
+m = plot(zlema, title="Zero Lag Basis", linewidth=2, color=zlemaColor)
+upper = plot(trend == -1 ? zlema+volatility : na, style = plot.style_linebr, color = color.new(red, 90), title = "Upper Deviation Band")
+lower = plot(trend == 1 ? zlema-volatility : na, style = plot.style_linebr, color = color.new(green, 90), title = "Lower Deviation Band")
+
+fill(m, upper, (open + close) / 2, zlema+volatility, color.new(red, 90), color.new(red, 70))
+fill(m, lower, (open + close) / 2, zlema-volatility, color.new(green, 90), color.new(green, 70))
+
+plotshape(ta.crossunder(trend, 0) ? zlema+volatility : na, "Bearish Trend", shape.labeldown, location.absolute, color.new(red, 70), text = "▼", textcolor = chart.fg_color, size = size.small)
+plotshape(ta.crossover(trend, 0) ? zlema-volatility : na, "Bullish Trend", shape.labelup, location.absolute, color.new(green, 70), text = "▲", textcolor = chart.fg_color, size = size.small)
+
+plotchar(ta.crossover(close, zlema) and trend == 1 and trend[1] == 1 ? zlema-volatility*1.5 : na, "Bullish Entry", "▲", location.absolute, color.new(green, 50), size = size.tiny)
+plotchar(ta.crossunder(close, zlema) and trend == -1 and trend[1] == -1 ? zlema+volatility*1.5 : na, "Bearish Entry", "▼", location.absolute, color.new(red, 50), size = size.tiny)
+
+s1 = request.security(syminfo.tickerid, t1, trend)
+s2 = request.security(syminfo.tickerid, t2, trend)
+s3 = request.security(syminfo.tickerid, t3, trend)
+s4 = request.security(syminfo.tickerid, t4, trend)
+s5 = request.security(syminfo.tickerid, t5, trend)
+
+s1a = s1 == 1 ? "Bullish" : "Bearish"
+s2a = s2 == 1 ? "Bullish" : "Bearish"
+s3a = s3 == 1 ? "Bullish" : "Bearish"
+s4a = s4 == 1 ? "Bullish" : "Bearish"
+s5a = s5 == 1 ? "Bullish" : "Bearish"
+
+if barstate.islast
+    var data_table = table.new(position=position.bottom_left, columns=2, rows=6, bgcolor=chart.bg_color, border_width=1, border_color=chart.fg_color, frame_color=chart.fg_color, frame_width=1)
+    table.cell(data_table, text_halign=text.align_center, column=0, row=0, text="Time Frame", text_color=chart.fg_color)
+    table.cell(data_table, text_halign=text.align_center, column=1, row=0, text="Signal", text_color=chart.fg_color)
+
+    table.cell(data_table, text_halign=text.align_center, column=0, row=1, text=t1, text_color=chart.fg_color)
+    table.cell(data_table, text_halign=text.align_center, column=1, row=1, text=s1a, text_color=chart.fg_color, bgcolor=s1a == "Bullish" ? color.new(green, 70) : color.new(red, 70))
+
+    table.cell(data_table, text_halign=text.align_center, column=0, row=2, text=t2, text_color=chart.fg_color)
+    table.cell(data_table, text_halign=text.align_center, column=1, row=2, text=s2a, text_color=chart.fg_color, bgcolor=s2a == "Bullish" ? color.new(green, 70) : color.new(red, 70))
+
+    table.cell(data_table, text_halign=text.align_center, column=0, row=3, text=t3, text_color=chart.fg_color)
+    table.cell(data_table, text_halign=text.align_center, column=1, row=3, text=s3a, text_color=chart.fg_color, bgcolor=s3a == "Bullish" ? color.new(green, 70) : color.new(red, 70))
+
+    table.cell(data_table, text_halign=text.align_center, column=0, row=4, text=t4, text_color=chart.fg_color)
+    table.cell(data_table, text_halign=text.align_center, column=1, row=4, text=s4a, text_color=chart.fg_color, bgcolor=s4a == "Bullish" ? color.new(green, 70) : color.new(red, 70))
+
+    table.cell(data_table, text_halign=text.align_center, column=0, row=5, text=t5, text_color=chart.fg_color)
+    table.cell(data_table, text_halign=text.align_center, column=1, row=5, text=s5a, text_color=chart.fg_color, bgcolor=s5a == "Bullish" ? color.new(green, 70) : color.new(red, 70))
+
+/////////////////////////////////////////ALERTS FOR SMALL ARROWS (ENTRY SIGNALS)
+alertcondition(ta.crossover(close, zlema) and trend == 1 and trend[1] == 1, "Bullish Entry Signal", 
+     message="Bullish Entry Signal detected. Consider entering a long position.")
+alertcondition(ta.crossunder(close, zlema) and trend == -1 and trend[1] == -1, "Bearish Entry Signal", 
+     message="Bearish Entry Signal detected. Consider entering a short position.")
+
+/////////////////////////////////////////ALERTS FOR TREND CONDITIONS
+alertcondition(ta.crossover(trend, 0), "Bullish Trend")
+alertcondition(ta.crossunder(trend, 0), "Bearish Trend")
+alertcondition(ta.cross(trend, 0), "(Bullish or Bearish) Trend")
+
+alertcondition(ta.crossover(s1, 0), "Bullish Trend Time Frame 1")
+alertcondition(ta.crossunder(s1, 0), "Bearish Trend Time Frame 1")
+alertcondition(ta.cross(s1, 0), "(Bullish or Bearish) Trend Time Frame 1")
+
+alertcondition(ta.crossover(s2, 0), "Bullish Trend Time Frame 2")
+alertcondition(ta.crossunder(s2, 0), "Bearish Trend Time Frame 2")
+alertcondition(ta.cross(s2, 0), "(Bullish or Bearish) Trend Time Frame 2")
+
+alertcondition(ta.crossover(s3, 0), "Bullish Trend Time Frame 3")
+alertcondition(ta.crossunder(s3, 0), "Bearish Trend Time Frame 3")
+alertcondition(ta.cross(s3, 0), "(Bullish or Bearish) Trend Time Frame 3")
+
+alertcondition(ta.crossover(s4, 0), "Bullish Trend Time Frame 4")
+alertcondition(ta.crossunder(s4, 0), "Bearish Trend Time Frame 4")
+alertcondition(ta.cross(s4, 0), "(Bullish or Bearish) Trend Time Frame 4")
+
+alertcondition(ta.crossover(s5, 0), "Bullish Trend Time Frame 5")
+alertcondition(ta.crossunder(s5, 0), "Bearish Trend Time Frame 5")
+alertcondition(ta.cross(s5, 0), "(Bullish or Bearish) Trend Time Frame 5")
+
+alertcondition(ta.crossover(close, zlema) and trend == 1 and trend[1] == 1, "Bullish Entry")
+alertcondition(ta.crossunder(close, zlema) and trend == -1 and trend[1] == -1, "Bearish Entry")
+
+
+//+++++++++++++++++++++++++
+// MTF FVG
+//+++++++++++++++++++++++++
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © pmk07
+
+// //@version=5
+// indicator("MTF FVG", overlay=true, max_boxes_count = 500)
+tf1 = input.bool(false, "1", group='MTF FVG - Timeframe', inline = '1')
+tf2 = input.bool(false, "3", group='MTF FVG - Timeframe', inline = '1')
+tf3 = input.bool(true, "5", group='MTF FVG - Timeframe', inline = '1')
+tf4 = input.bool(false, "15", group='MTF FVG - Timeframe', inline = '2')
+tf5 = input.bool(false, "30", group='MTF FVG - Timeframe', inline = '2')
+tf6 = input.bool(false, "45", group='MTF FVG - Timeframe', inline = '2')
+tf7 = input.bool(false, "60", group='MTF FVG - Timeframe', inline = '2')
+tf8 = input.bool(false, "120", group='MTF FVG - Timeframe', inline = '2')
+tf9 = input.bool(false, "180", group='MTF FVG - Timeframe', inline = '2')
+tf10 = input.bool(false, "240", group='MTF FVG - Timeframe', inline = '2')
+tf11 = input.bool(false, "D", group='MTF FVG - Timeframe', inline = '3')
+tf12 = input.bool(false, "W", group='MTF FVG - Timeframe', inline = '3')
+
+changelvl = input.bool(false, "Move box levels with price touch", group='MTF FVG - General')
+changecolor = input.bool(true, "Change box color with price touch", group='MTF FVG - General')
+extend_r = input.bool(true, "Extend boxes to the right", group='MTF FVG - General')
+plotLabel = input.bool(defval=true, title='Plot OB Label', inline='FVG label', group='MTF FVG - Style')
+LabelColor = input.color(defval=color.new(color.white, 50), title='Color', inline='FVG label', group='MTF FVG - Style')
+LabelSize = input.string(defval=size.normal, title="Size", options=[size.huge, size.large, size.small, size.tiny, size.auto, size.normal], inline='FVG label', group='MTF FVG - Style')
+BullColorFVG = input.color(defval=color.new(color.green, 80), title='Bullish FVG Color', inline='Set Custom Color', group='MTF FVG - Style')
+BearColorFVG = input.color(defval=color.new(color.red, 80), title='Bearish FVG Color', inline='Set Custom Color', group='MTF FVG - Style')
+BullColorTested = input.color(defval=color.new(color.gray, 80), title='Tested Bullish FVG Color', inline='Set Custom Color', group='MTF FVG - Style')
+BearColorTested = input.color(defval=color.new(color.gray, 80), title='Tested Bearish FVG Color', inline='Set Custom Color', group='MTF FVG - Style')
+
+var box[] bull_box  = array.new_box()
+var box[] bear_box  = array.new_box()
+
+
+
+find_box(t) =>
+    var int x = na
+    var float _top = na
+    var float _bottom = na
+    var int _time = na
+    if barstate.isconfirmed
+        x := low[2] >= high ? -1 : low >= high[2] ? 1 : 0 //x := low[2] >= high ? -1 : low >= high[2] ? 1 : 0
+        _top := x > 0 ? low : x < 0 ? low[2] : 0
+        _bottom := x > 0 ? high[2] : x < 0 ? high : 0
+        _time := time - t * 60000 * 2
+    [_time, _top, _bottom, x]
+
+create_box(_time, _top, _bottom, x, TF) =>
+    _col = x > 0 ? BullColorFVG : BearColorFVG
+    _extend = extend_r ? extend.right : extend.none
+    _text = plotLabel ? TF : na
+    box boxOB = na
+    if x != 0
+        boxOB := box.new(left=_time, top=_top, right=time, extend=_extend , bottom=_bottom, bgcolor=_col, border_color = na, text=_text, text_halign=text.align_right, text_size=LabelSize, text_color=LabelColor, xloc = xloc.bar_time)
+    if x > 0
+        array.push(bull_box, boxOB)
+    if x < 0
+        array.push(bear_box, boxOB)
+
+control_box(_boxes, bearbull) => 
+    if array.size(_boxes) > 0
+        for i = array.size(_boxes) - 1 to 0 by 1
+            _box = array.get(_boxes, i)
+            _boxLow = box.get_bottom(_box)
+            _boxHigh = box.get_top(_box)
+            if (bearbull > 0 and low < _boxLow) or (bearbull < 0 and high > _boxHigh)
+                box.delete(_box)
+                array.set(_boxes, i, na)
+            else 
+                if bearbull > 0 and low < _boxHigh
+                    if changelvl
+                        box.set_top(_box, low)
+                    if changecolor
+                        box.set_bgcolor(_box, BullColorTested)    
+                if bearbull < 0 and high > _boxLow
+                    if changelvl
+                        box.set_bottom(_box, high)
+                    if changecolor
+                        box.set_bgcolor(_box, BullColorTested)
+                box.set_right(_box, time)
+    if array.size(_boxes) > 0 
+        for i = array.size(_boxes) - 1 to 0 by 1
+            if na(array.get(_boxes, i))
+                array.remove(_boxes, i)
+        
+[_time1, _top1, _bottom1, xtf1]  = request.security(syminfo.tickerid, "1", find_box(1))
+[_time2, _top2, _bottom2, xtf2]  = request.security(syminfo.tickerid, "3", find_box(3))
+[_time3, _top3, _bottom3, xtf3]  = request.security(syminfo.tickerid, "5", find_box(5))
+[_time4, _top4, _bottom4, xtf4]  = request.security(syminfo.tickerid, "15", find_box(15))
+[_time5, _top5, _bottom5, xtf5]  = request.security(syminfo.tickerid, "30", find_box(30))
+[_time6, _top6, _bottom6, xtf6]  = request.security(syminfo.tickerid, "45", find_box(45))
+[_time7, _top7, _bottom7, xtf7]  = request.security(syminfo.tickerid, "60", find_box(60))
+[_time8, _top8, _bottom8, xtf8]  = request.security(syminfo.tickerid, "120", find_box(120))
+[_time9, _top9, _bottom9, xtf9]  = request.security(syminfo.tickerid, "180", find_box(180))
+[_time10, _top10, _bottom10, xtf10]  = request.security(syminfo.tickerid, "240", find_box(240))
+[_time11, _top11, _bottom11, xtf11]  = request.security(syminfo.tickerid, "D", find_box(1440))
+[_time12, _top12, _bottom12, xtf12]  = request.security(syminfo.tickerid, "W", find_box(10080))
+
+if tf1 and timeframe.change("1")
+    create_box(_time1, _top1, _bottom1, xtf1, "1")
+	// alert("FVG 1")
+if tf2 and timeframe.change("3")
+    create_box(_time2, _top2, _bottom2, xtf2, "3")
+	// alert("FVG 3")
+if tf3 and timeframe.change("5")
+    create_box(_time3, _top3, _bottom3, xtf3, "5")
+	// alert("FVG 5")
+if tf4 and timeframe.change("15")
+    create_box(_time4, _top4, _bottom4, xtf4, "15")
+	// alert("FVG 15")
+if tf5 and timeframe.change("30")
+    create_box(_time5, _top5, _bottom5, xtf5, "30")
+	// alert("FVG 30")
+if tf6 and timeframe.change("45")
+    create_box(_time6, _top6, _bottom6, xtf6, "45")
+	// alert("FVG 45")
+if tf7 and timeframe.change("60")
+    create_box(_time7, _top7, _bottom7, xtf7, "60")
+	// alert("FVG H1")
+if tf8 and timeframe.change("120")
+    create_box(_time8, _top8, _bottom8, xtf8, "120")
+	// alert("FVG H2")
+if tf9 and timeframe.change("180")
+    create_box(_time9, _top9, _bottom9, xtf9, "180")
+	// alert("FVG H3")
+if tf10 and timeframe.change("240")
+    create_box(_time10, _top10, _bottom10, xtf10, "240")
+	// alert("FVG H4")
+if tf11 and timeframe.change("D")
+    create_box(_time11, _top11, _bottom11, xtf11, "D")
+	// alert("FVG D")
+if tf12 and timeframe.change("W")
+    create_box(_time12, _top12, _bottom12, xtf12, "W")
+	// alert("FVG W")
+
+control_box(bull_box, 1)
+control_box(bear_box, -1)
+
+
+
+//+++++++++++++++++++++++++
+// Inputs for date range
+//+++++++++++++++++++++++++
+startDay = input.int(1, "Start D - M - Y", minval=1, maxval=31, group="Date Range", inline = "start")
+startMonth = input.int(11, "", minval=1, maxval=12, group="Date Range", inline = "start")
+startYear = input.int(2024, "", group="Date Range", inline = "start")
+endDay = input.int(31, "End D - M - Y", minval=1, maxval=31, group="Date Range", inline = "end")
+endMonth = input.int(12, "", minval=1, maxval=12, group="Date Range", inline = "end")
+endYear = input.int(2024, "", group="Date Range", inline = "end")
+startTimestamp = timestamp(startYear, startMonth, startDay, 00, 00)
+endTimestamp = timestamp(endYear, endMonth, endDay, 23, 59)
+
+
+
+longCondition = trend > 0 ? true : na
+shortCondition = trend < 0 ? true : na
+//++++++++++++++++++++++++++++++
+// Buy Condition and Take Profit
+//++++++++++++++++++++++++++++++
+// if tf1
+//     longCondition := longCondition  and (xtf1 > 0)
+// if tf2
+//     longCondition := longCondition  and (xtf2 > 0)
+// if tf3
+//     longCondition := longCondition  and (xtf3 > 0)
+// if tf4
+//     longCondition := longCondition  and (xtf4 > 0)
+// if tf5
+//     longCondition := longCondition  and (xtf5 > 0)
+// if tf6
+//     longCondition := longCondition  and (xtf6 > 0)
+// if tf7
+//     longCondition := longCondition  and (xtf7 > 0)
+// if tf8
+//     longCondition := longCondition  and (xtf8 > 0)
+// if tf9
+//     longCondition := longCondition  and (xtf9 > 0)
+// if tf10
+//     longCondition := longCondition  and (xtf10 > 0)
+// if tf11
+//     longCondition := longCondition  and (xtf11 > 0)
+// if tf12
+//     longCondition := longCondition  and (xtf12 > 0)
+
+// if tf1
+//     shortCondition := shortCondition and (xtf1 < 0)
+// if tf2
+//     shortCondition := shortCondition and (xtf2 < 0)
+// if tf3
+//     shortCondition := shortCondition and (xtf3 < 0)
+// if tf4
+//     shortCondition := shortCondition and (xtf4 < 0)
+// if tf5
+//     shortCondition := shortCondition and (xtf5 < 0)
+// if tf6
+//     shortCondition := shortCondition and (xtf6 < 0)
+// if tf7
+//     shortCondition := shortCondition and (xtf7 < 0)
+// if tf8
+//     shortCondition := shortCondition and (xtf8 < 0)
+// if tf9
+//     shortCondition := shortCondition and (xtf9 < 0)
+// if xtf10
+//     shortCondition := shortCondition and (xtf10 < 0)
+// if xtf11
+//     shortCondition := shortCondition and (xtf11 < 0)
+// if xtf12
+//     shortCondition := shortCondition and (xtf12 < 0)
+
+
+
+var float longSL = na
+var float shortSL = na
+
+// Definir o preço de entrada
+var float longEntryPrice = na
+var float shortEntryPrice = na
+
+if (time >= startTimestamp and time <= endTimestamp)
+
+    // Executa a ordem de compra
+    
+    if (longCondition)
+        if (xtf3 > 0)
+            longEntryPrice := close
+            longSL := zlema
+            strategy.entry("Long", strategy.long, alert_message = "Buy")
+                // Desenhar a linha no preço de entrada da compra
+            
+                
+
+
+    // Executa a ordem de compra
+    if (shortCondition)
+        if (xtf3 < 0)
+            strategy.entry("Short", strategy.short, alert_message = "Sell")
+            shortSL := zlema
+
+
+
+// // Configurar as saídas com os SLs salvos
+if strategy.position_size > 0  // Long ativo
+    strategy.exit("SL", from_entry="Long", stop=longSL, comment_loss = "SL")
+
+
+if strategy.position_size < 0  // Long ativo
+    strategy.exit("SL", from_entry="Short", stop=shortSL, comment_loss = "SL")
+
+
