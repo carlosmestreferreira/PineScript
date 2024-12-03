@@ -1,0 +1,77 @@
+//**********************************************************************************
+//***************************                   ************************************
+//***************************   CARLOS MESTRE   ************************************
+//***************************    © C_Mestre     ************************************
+//***************************                   ************************************
+//**********************************************************************************
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+//@version=5
+indicator("[CM] - Moving Average", overlay = true)
+
+//+++++++++++++++++++++++++
+// MOVING AVERAGE
+//+++++++++++++++++++++++++
+// Função para calcular a média móvel de acordo com os parâmetros
+calcular_ma(ma_type, src, length, timeframe) =>
+    ma_value = switch ma_type
+        "HMA" => ta.hma(src, length)
+        "SMA" => ta.sma(src, length)
+        "EMA" => ta.ema(src, length)
+        "RMA" => ta.rma(src, length)
+        "WMA" => ta.wma(src, length)
+        "VWMA" => ta.vwma(src, length)
+        "LSMA" => ta.linreg(src, length, 0)
+        => na
+    request.security(syminfo.tickerid, timeframe, ma_value, barmerge.gaps_on, lookahead = barmerge.lookahead_on)
+
+// Inputs para cada média móvel
+MA_1_TIMEFRAME = input.timeframe("", title = "MA 1", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_1_type = input.string(defval = "EMA", title = "", options = ["HMA", "SMA", "SMMA", "EMA", "RMA", "WMA", "VWMA", "LSMA"], inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_1_length = input.int(72, minval = 1, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_1_src = input(close, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+
+MA_2_TIMEFRAME = input.timeframe("", title = "MA 2", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_2_type = input.string(defval = "EMA", title = "", options = ["HMA", "SMA", "SMMA", "EMA", "RMA", "WMA", "VWMA", "LSMA"], inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_2_length = input.int(89, minval = 1, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_2_src = input(close, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+
+MA_3_TIMEFRAME = input.timeframe("", title = "MA 3", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_3_type = input.string(defval = "EMA", title = "", options = ["HMA", "SMA", "SMMA", "EMA", "RMA", "WMA", "VWMA", "LSMA"], inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_3_length = input.int(216, minval = 1, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_3_src = input(close, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+
+MA_4_TIMEFRAME = input.timeframe("", title = "MA 4", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_4_type = input.string(defval = "EMA", title = "", options = ["HMA", "SMA", "SMMA", "EMA", "RMA", "WMA", "VWMA", "LSMA"], inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_4_length = input.int(267, minval = 1, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_4_src = input(close, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+
+MA_5_TIMEFRAME = input.timeframe("", title = "MA 5", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_5_type = input.string(defval = "EMA", title = "", options = ["HMA", "SMA", "SMMA", "EMA", "RMA", "WMA", "VWMA", "LSMA"], inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_5_length = input.int(360, minval = 1, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_5_src = input(close, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+
+MA_6_TIMEFRAME = input.timeframe("", title = "MA 6", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_6_type = input.string(defval = "EMA", title = "", options = ["HMA", "SMA", "SMMA", "EMA", "RMA", "WMA", "VWMA", "LSMA"], inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_6_length = input.int(445, minval = 1, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+MA_6_src = input(close, title = "", inline = "SHORT 1", group = "MOVING AVERAGE")
+
+// Calcular as médias móveis usando a função
+MA1 = calcular_ma(MA_1_type, MA_1_src, MA_1_length, MA_1_TIMEFRAME)
+MA2 = calcular_ma(MA_2_type, MA_2_src, MA_2_length, MA_2_TIMEFRAME)
+MA3 = calcular_ma(MA_3_type, MA_3_src, MA_3_length, MA_3_TIMEFRAME)
+MA4 = calcular_ma(MA_4_type, MA_4_src, MA_4_length, MA_4_TIMEFRAME)
+MA5 = calcular_ma(MA_5_type, MA_5_src, MA_5_length, MA_5_TIMEFRAME)
+MA6 = calcular_ma(MA_6_type, MA_6_src, MA_6_length, MA_6_TIMEFRAME)
+
+// Plotar as médias móveis
+PLOT_MA1 = plot(MA1, "MA1", color.green, 1, plot.style_line, display = display.all, editable = true)
+PLOT_MA2 = plot(MA2, "MA2", color.green, 2, plot.style_line, display = display.all, editable = true)
+PLOT_MA3 = plot(MA3, "MA3", color.yellow, 1, plot.style_line, display = display.all, editable = true)
+PLOT_MA4 = plot(MA4, "MA4", color.yellow, 2, plot.style_line, display = display.all, editable = true)
+PLOT_MA5 = plot(MA5, "MA5", color.blue, 1, plot.style_line, display = display.all, editable = true)
+PLOT_MA6 = plot(MA6, "MA6", color.blue, 2, plot.style_line, display = display.all, editable = true)
+
+fill(PLOT_MA1, PLOT_MA2, color.new(color.green, 50))
+fill(PLOT_MA3, PLOT_MA4, color.new(color.yellow, 50))
+fill(PLOT_MA5, PLOT_MA6, color.new(color.blue, 50))
