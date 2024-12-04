@@ -1,0 +1,85 @@
+//This indicator is based on the formulas in the original "ADX and DI" script of Masa Nakamuro
+//The indicator gives a multiplication of ADX and the DI+ and DI-values, color coded for bullish or bearish momentum
+//the indicator was optimised for use with HA-candles, but works with regular candles as well
+//and shows general market direction en divergence in a simpler visual way than the normal ADX-DI lines
+//a threshold mask and the actual DI-lines kan be shown or omitted as preferred
+//
+//version 2. added support for MTF (thank you Chris Moody for the MTF-Code!!)
+//version 5. Update by [CM] - © C_Mestre. Was added a hline and a plotshape that indicates the intersection of the smooth line with the hline(0)
+
+//nj
+//@version=5
+indicator(' trend indication - nj')
+useCurrentRes = input.bool(true, title='Use Current Chart Resolution?')
+resCustom = input.timeframe(title='Use Different Timeframe? Uncheck Box Above', defval='60')
+len = input.int(title='ADX Length', defval=14)
+showmask = input.bool(false, title='Show threshold mask')
+showDI = input.bool(false, title='Show DI - lines')
+th1 = input.int(10, title='threshold 1')
+th2 = input.int(20, title='threshold 2')
+th3 = input.int(40, title='threshold 3')
+priority = input.int(1, title='1=trend indication,2=retracement indication', minval=1, maxval=2)
+
+res = useCurrentRes ? timeframe.period : resCustom
+TrueRange = math.max(math.max(high - low, math.abs(high - nz(close[1]))), math.abs(low - nz(close[1])))
+DirectionalMovementPlus = high - nz(high[1]) > nz(low[1]) - low ? math.max(high - nz(high[1]), 0) : 0
+DirectionalMovementMinus = nz(low[1]) - low > high - nz(high[1]) ? math.max(nz(low[1]) - low, 0) : 0
+
+// Initialize variables
+var float SmoothedTrueRange = na
+var float SmoothedDirectionalMovementPlus = na
+var float SmoothedDirectionalMovementMinus = na
+
+SmoothedTrueRange := nz(SmoothedTrueRange[1]) - nz(SmoothedTrueRange[1]) / len + TrueRange
+SmoothedDirectionalMovementPlus := nz(SmoothedDirectionalMovementPlus[1]) - nz(SmoothedDirectionalMovementPlus[1]) / len + DirectionalMovementPlus
+SmoothedDirectionalMovementMinus := nz(SmoothedDirectionalMovementMinus[1]) - nz(SmoothedDirectionalMovementMinus[1]) / len + DirectionalMovementMinus
+
+base_DIPlus = SmoothedDirectionalMovementPlus / SmoothedTrueRange * 100
+base_DIMinus = SmoothedDirectionalMovementMinus / SmoothedTrueRange * 100
+
+//output
+DIPlus = request.security(syminfo.tickerid, res, base_DIPlus)
+DIMinus = request.security(syminfo.tickerid, res, base_DIMinus)
+
+DIdiff = DIPlus - DIMinus
+DIcolor = DIdiff < 0 ? color.red : DIdiff > 0 ? color.lime : color.yellow
+DX = math.abs(DIPlus - DIMinus) / (DIPlus + DIMinus) * 100
+ADX = ta.sma(DX, len)
+
+momentprod = DIdiff * ADX
+posprod = DIPlus * 40
+negprod = DIMinus * -40
+smooth = ta.ema(momentprod, len)
+thline = DIdiff * th1
+thline2 = DIdiff * th2
+thline3 = DIdiff * th3
+ema_price = ta.ema(close, len)
+ema_up = ema_price > ema_price[1] ? true : false
+ema_down = ema_price < ema_price[1] ? true : false
+emacolor = ta.ema(close, 4) > ta.ema(close[1], 4) ? color.green : color.red
+smcolor = smooth < smooth[1] ? (DIcolor == color.red ? color.new(color.red, 0) : (priority == 2 and ema_down ? color.new(color.maroon, 70) : emacolor)) : (smooth > smooth[1] ? (DIcolor == color.lime ? color.new(color.lime, 0) : (priority == 2 and ema_down ? color.new(color.green, 70) : emacolor)) : color.yellow)
+DIPlus_strength = showmask ? DIPlus >= th2 ? color.new(color.lime,60) : color.new(color.lime,92) : color.new(color.lime,75)
+DIMinus_strength = showmask ? DIMinus >= th2 ? color.new(color.red,50) : color.new(color.red,80) : color.new(color.red,70)
+
+hline(0, "Zero Line", color.white)
+plot(momentprod, color=DIcolor, title='Dominant strength', style=plot.style_columns, linewidth=1)
+plot(showDI ? posprod : na, color=DIPlus_strength, title='DI+', style=plot.style_line, linewidth=1)
+plot(showDI ? negprod : na, color=DIMinus_strength, title='DI-', style=plot.style_line, linewidth=1)
+plot(showmask ? thline : na, title='threshold 1', color=color.new(color.black, 40), linewidth=1, style=plot.style_area)
+plot(showmask ? thline2 : na, title='threshold 2', color=color.new(color.black, 70), linewidth=1, style=plot.style_area)
+plot(showmask ? thline3 : na, title='threshold 3', color=color.new(color.black, 75), linewidth=1, style=plot.style_area)
+plot(smooth, title="Linha", color=smcolor, linewidth=3)
+
+showOnChart = input.bool(true, title='Ver no gráfico')
+showOnIndicator = input.bool(false, title='Ver no indicador')
+plotshape(showOnChart and ta.crossover(smooth, 0), title="Gráfico ▲", style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small, force_overlay = true)
+plotshape(showOnChart and ta.crossunder(smooth, 0), title="Gráfico ▼", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, force_overlay = true)
+plotshape(showOnIndicator and ta.crossover(smooth, 0), title="Indicador ▲", style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small)
+plotshape(showOnIndicator and ta.crossunder(smooth, 0), title="Indicador ▼", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small)
+
+alertcondition(ta.crossover(smooth, 0), "Linha Cruza ▲", "▲")
+alertcondition(ta.crossunder(smooth, 0), "Linha Cruza ▼", "▼")
+if ta.crossover(smooth, 0)
+    alert("▲")
+if ta.crossunder(smooth, 0)
+    alert("▼")
