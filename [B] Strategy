@@ -1,0 +1,49 @@
+// ADD THIS PARAMETER
+strategy("My strategy", overlay=true, default_qty_type=strategy.cash, default_qty_value=1000, currency=currency.USD, calc_on_every_tick = true, commission_value = 0.05)
+
+
+//++++++++++++++++++++++++++++++
+// Inputs for date range
+//++++++++++++++++++++++++++++++
+
+// INDICATOR HERE
+
+//++++++++++++++++++++++++++++++
+// Inputs for date range
+//++++++++++++++++++++++++++++++
+startDay = input.int(1, "Start D - M - Y", minval=1, maxval=31, group="Date Range", inline = "start")
+startMonth = input.int(12, "", minval=1, maxval=12, group="Date Range", inline = "start")
+startYear = input.int(2024, "", group="Date Range", inline = "start")
+endDay = input.int(31, "End D - M - Y", minval=1, maxval=31, group="Date Range", inline = "end")
+endMonth = input.int(12, "", minval=1, maxval=12, group="Date Range", inline = "end")
+endYear = input.int(2024, "", group="Date Range", inline = "end")
+startTimestamp = timestamp(startYear, startMonth, startDay, 00, 00)
+endTimestamp = timestamp(endYear, endMonth, endDay, 23, 59)
+//++++++++++++++++++++++++++++++
+// Take Profit and Stop Loss Percent
+//++++++++++++++++++++++++++++++
+takeProfitPercent = input.float(1.0, "Target Value", step = 0.5) / 100
+stopLossPercent = input.float(1.0, "Stop Value", step = 0.5) / 100
+//++++++++++++++++++++++++++++++
+// Take Profit and Stop Loss Calculation
+//++++++++++++++++++++++++++++++
+takeProfit_buy = strategy.position_avg_price * (1 + takeProfitPercent)
+stopLoss_buy = strategy.position_avg_price * (1 - stopLossPercent)
+takeProfit_sell = strategy.position_avg_price * (1 - takeProfitPercent)
+stopLoss_sell = strategy.position_avg_price * (1 + stopLossPercent)
+//++++++++++++++++++++++++++++++
+// Long and Short Condition
+//++++++++++++++++++++++++++++++
+longCondition = //
+shortContition = //
+
+if (time >= startTimestamp and time <= endTimestamp)
+    if (longCondition)
+        strategy.entry("Long", strategy.long)
+    if (shortContition)
+        strategy.entry("Short", strategy.short)
+
+if (strategy.position_size > 0 and strategy.position_avg_price > 0)
+    strategy.exit("SL", from_entry="Long",limit=takeProfit_buy, comment_profit = "TP", stop=stopLoss_buy, comment_loss = "SL")
+if (strategy.position_size < 0 and strategy.position_avg_price > 0)
+    strategy.exit("SL", from_entry="Short",limit=takeProfit_sell, comment_profit = "TP", stop=stopLoss_sell, comment_loss = "SL")
